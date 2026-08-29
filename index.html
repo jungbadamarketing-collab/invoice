@@ -172,10 +172,9 @@
     <div class="summary-box" id="summaryBox"></div>
     <div class="mismatch-warning" id="mismatchWarning" style="display:none;">
       <div id="warningText"></div>
-      <label style="display:flex; align-items:center; gap:6px; margin-top:8px; font-weight:normal; font-size:13px;">
-        <input type="checkbox" id="mismatchConfirm" onchange="updateSubmitState()">
-        위 내용을 확인했고, 그래도 이대로 제출합니다
-      </label>
+      <div style="margin-top:8px; font-weight:normal; font-size:13px;">
+        제출하려면 위 항목의 실제 값을 맞게 수정해주세요.
+      </div>
     </div>
 
     <button class="action" id="saveBtn" onclick="saveInvoice()">제출하기</button>
@@ -375,7 +374,7 @@
         if (!qty || !unitPrice) { row.classList.remove('row-mismatch'); return; }
 
         const expected = qty * unitPrice;
-        const isOff = Math.abs(expected - amount) > Math.max(2, expected * 0.01); // 반올림 오차 약간 허용
+        const isOff = Math.abs(expected - amount) > 1; // 소수점 수량 반올림 오차(±1원)만 허용
 
         if (isOff) {
           row.classList.add('row-mismatch');
@@ -412,14 +411,12 @@
         warningBox.style.display = 'block';
       } else {
         warningBox.style.display = 'none';
-        document.getElementById('mismatchConfirm').checked = false;
       }
       updateSubmitState();
     }
 
     function updateSubmitState() {
-      const confirmChecked = document.getElementById('mismatchConfirm').checked;
-      document.getElementById('saveBtn').disabled = hasMismatch && !confirmChecked;
+      document.getElementById('saveBtn').disabled = hasMismatch;
     }
 
     async function saveInvoice() {
@@ -435,8 +432,8 @@
         document.getElementById('errorMsg').textContent = '날짜 형식이 올바르지 않아요. 2026-08-25 처럼 입력해주세요.';
         return;
       }
-      if (hasMismatch && !document.getElementById('mismatchConfirm').checked) {
-        document.getElementById('errorMsg').textContent = '금액 불일치/계산오류를 먼저 확인해주세요.';
+      if (hasMismatch) {
+        document.getElementById('errorMsg').textContent = '금액 불일치/계산오류를 먼저 해결해주세요.';
         return;
       }
 
