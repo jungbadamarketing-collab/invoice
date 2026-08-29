@@ -8,7 +8,7 @@
   * { box-sizing: border-box; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif;
-    max-width: 480px;
+    max-width: 520px;
     margin: 0 auto;
     padding: 16px;
     background: #f7f7f8;
@@ -25,132 +25,203 @@
     box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   }
 
+  /* 거래처 선택 화면 */
+  .vendor-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .vendor-btn {
+    padding: 20px 10px;
+    background: #f0f4f1;
+    border: 2px solid transparent;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: bold;
+    color: #2c7a4b;
+    cursor: pointer;
+    text-align: center;
+  }
+  .vendor-btn.other { background: #f4f4f4; color: #555; }
+  .selected-vendor-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #eaf7ee; border-radius: 10px; padding: 10px 14px;
+    margin-bottom: 16px; font-size: 14px;
+  }
+  .selected-vendor-bar button {
+    background: none; border: none; color: #2c7a4b; font-size: 13px; cursor: pointer; text-decoration: underline;
+  }
+
   input[type="file"] { display: none; }
   .upload-btn {
-    display: block;
-    width: 100%;
-    padding: 16px;
-    text-align: center;
-    background: #2c7a4b;
-    color: #fff;
-    border-radius: 10px;
-    font-size: 15px;
-    cursor: pointer;
+    display: block; width: 100%; padding: 16px; text-align: center;
+    background: #2c7a4b; color: #fff; border-radius: 10px; font-size: 15px; cursor: pointer;
+  }
+  #preview { width: 100%; border-radius: 8px; margin-top: 12px; display: none; }
+
+  .confirm-title { font-size: 16px; font-weight: bold; margin-bottom: 4px; }
+  .confirm-sub { font-size: 13px; color: #888; margin-bottom: 16px; }
+
+  label { display: block; font-size: 13px; color: #555; margin: 12px 0 4px; }
+  input[type="text"], input[type="date"], input[type="number"] {
+    width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px;
   }
 
-  #preview {
-    width: 100%;
-    border-radius: 8px;
-    margin-top: 12px;
-    display: none;
+  table.items { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+  table.items th { text-align: left; font-weight: normal; color: #888; padding: 4px; border-bottom: 1px solid #eee; }
+  table.items td { padding: 4px 2px; vertical-align: middle; }
+  table.items input { padding: 6px; font-size: 13px; }
+  .col-name input { width: 100%; }
+  .col-num input { width: 100%; text-align: right; }
+  .row-del { background: none; border: none; color: #c0392b; font-size: 16px; cursor: pointer; padding: 4px 8px; }
+  .add-row-btn {
+    margin-top: 8px; background: #eee; color: #333; border: none;
+    border-radius: 8px; padding: 8px 12px; font-size: 13px; cursor: pointer;
   }
-
-  .confirm-title {
-    font-size: 16px;
-    font-weight: bold;
-    margin-bottom: 4px;
-  }
-  .confirm-sub {
-    font-size: 13px;
-    color: #888;
-    margin-bottom: 16px;
-  }
-
-  label {
-    display: block;
-    font-size: 13px;
-    color: #555;
-    margin: 12px 0 4px;
-  }
-  input[type="text"], input[type="date"] {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-size: 15px;
-  }
+  .total-row { text-align: right; font-size: 14px; font-weight: bold; margin-top: 10px; }
 
   button.action {
-    width: 100%;
-    padding: 14px;
-    border: none;
-    border-radius: 10px;
-    font-size: 15px;
-    margin-top: 16px;
-    cursor: pointer;
+    width: 100%; padding: 14px; border: none; border-radius: 10px;
+    font-size: 15px; margin-top: 16px; cursor: pointer;
   }
-  #ocrBtn { background: #333; color: #fff; }
   #saveBtn { background: #2c7a4b; color: #fff; }
   button:disabled { opacity: 0.5; }
 
   .status { font-size: 13px; color: #888; margin-top: 8px; text-align: center; }
   .result {
-    display: none;
-    background: #eaf7ee;
-    border: 1px solid #b7e2c4;
-    border-radius: 10px;
-    padding: 14px;
-    margin-top: 16px;
-    font-size: 14px;
+    display: none; background: #eaf7ee; border: 1px solid #b7e2c4;
+    border-radius: 10px; padding: 14px; margin-top: 16px; font-size: 14px;
   }
-  .result a { color: #2c7a4b; font-weight: bold; }
+  .result a { color: #2c7a4b; font-weight: bold; margin-right: 12px; }
+  .price-alert {
+    display: none; background: #fff4e5; border: 1px solid #f2c68a;
+    border-radius: 10px; padding: 12px; margin-top: 12px; font-size: 13px;
+  }
   .error { color: #c0392b; font-size: 13px; margin-top: 8px; }
 
   .spinner {
-    display: inline-block;
-    width: 14px; height: 14px;
-    border: 2px solid #ccc;
-    border-top-color: #333;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-    vertical-align: middle;
-    margin-right: 6px;
+    display: inline-block; width: 14px; height: 14px;
+    border: 2px solid #ccc; border-top-color: #333; border-radius: 50%;
+    animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 6px;
   }
   @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
   <h1>거래명세서 정리</h1>
-  <div class="sub">촬영 → 자동 인식 → 확인 → 저장</div>
+  <div class="sub">거래처 선택 → 촬영 → 확인 → 저장</div>
 
-  <!-- 설정: Apps Script 배포 URL을 여기에 붙여넣으세요 -->
   <script>
-    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbytjF8AA8_91yTjxJhgc7cltCYIXJRuUyFSWEtPWiylRKTTA-5gs7--ATg9mrTRN5XH/exec';
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxvzr8gn6O5ansrHr-LhhlkXyDFm7FPyd5vXiYq96dUhnJWoq27WqpSo_QkfQ722MFV/exec';
+    const VENDOR_PRESETS = ['성진에프에스', '미나퍼시픽', '대림수산'];
   </script>
 
-  <div class="card" id="uploadCard">
+  <!-- 1단계: 거래처 선택 -->
+  <div class="card" id="vendorCard">
+    <label style="margin-top:0;">거래처를 선택하세요</label>
+    <div class="vendor-grid" id="vendorGrid"></div>
+    <div id="otherVendorBox" style="display:none; margin-top:12px;">
+      <label>거래처명 직접 입력</label>
+      <input type="text" id="otherVendorInput" placeholder="예: OO수산">
+      <button class="action" style="background:#2c7a4b; color:#fff;" onclick="confirmOtherVendor()">선택 완료</button>
+    </div>
+  </div>
+
+  <!-- 2단계: 촬영 -->
+  <div class="card" id="uploadCard" style="display:none;">
+    <div class="selected-vendor-bar">
+      <span>거래처: <b id="vendorLabel"></b></span>
+      <button onclick="resetVendor()">변경</button>
+    </div>
     <label class="upload-btn" for="fileInput">📷 거래명세서 촬영 / 선택</label>
     <input type="file" id="fileInput" accept="image/*" capture="environment">
     <img id="preview">
     <div class="status" id="ocrStatus"></div>
   </div>
 
+  <!-- 3단계: 확인 -->
   <div class="card" id="formCard" style="display:none;">
     <div class="confirm-title" id="confirmHeadline"></div>
     <div class="confirm-sub">인식 결과가 맞는지 확인해주세요. 틀리면 아래에서 직접 수정해주세요.</div>
 
     <label>날짜</label>
     <input type="date" id="fDate">
-    <label>업체명</label>
-    <input type="text" id="fVendor" placeholder="예: OO수산">
-    <label>금액 (원)</label>
-    <input type="text" id="fAmount" placeholder="예: 350000">
+
+    <label>품목 내역</label>
+    <table class="items" id="itemsTable">
+      <thead>
+        <tr>
+          <th class="col-name">품목명</th>
+          <th class="col-num" style="width:44px;">수량</th>
+          <th class="col-num" style="width:64px;">단가</th>
+          <th class="col-num" style="width:72px;">공급가액</th>
+          <th style="width:24px;"></th>
+        </tr>
+      </thead>
+      <tbody id="itemsBody"></tbody>
+    </table>
+    <button type="button" class="add-row-btn" onclick="addRow()">+ 품목 추가</button>
+    <div class="total-row" id="totalRow">합계: 0원</div>
 
     <button class="action" id="saveBtn" onclick="saveInvoice()">제출하기</button>
     <div class="status" id="saveStatus"></div>
     <div class="error" id="errorMsg"></div>
   </div>
 
+  <!-- 4단계: 결과 -->
   <div class="result" id="resultCard">
     ✅ 저장 완료<br>
-    <span id="resultPath"></span><br>
+    <span id="resultPath"></span><br><br>
     <a id="resultLink" href="#" target="_blank">드라이브에서 열기</a>
-    <button class="action" id="resetBtn" onclick="resetForm()" style="background:#666; color:#fff;">다음 명세서 올리기</button>
+    <a id="sheetLink" href="#" target="_blank">시트에서 열기</a>
+    <button class="action" id="resetBtn" onclick="resetAll()" style="background:#666; color:#fff;">다음 명세서 올리기</button>
   </div>
+  <div class="price-alert" id="priceAlert"></div>
 
   <script>
+    let selectedVendor = null;
     let base64Data = null;
     let mimeType = null;
+
+    function initVendorButtons() {
+      const grid = document.getElementById('vendorGrid');
+      grid.innerHTML = '';
+      VENDOR_PRESETS.forEach(v => {
+        const btn = document.createElement('button');
+        btn.className = 'vendor-btn';
+        btn.textContent = v;
+        btn.onclick = () => selectVendor(v);
+        grid.appendChild(btn);
+      });
+      const otherBtn = document.createElement('button');
+      otherBtn.className = 'vendor-btn other';
+      otherBtn.textContent = '기타';
+      otherBtn.onclick = () => {
+        document.getElementById('otherVendorBox').style.display = 'block';
+      };
+      grid.appendChild(otherBtn);
+    }
+
+    function confirmOtherVendor() {
+      const name = document.getElementById('otherVendorInput').value.trim();
+      if (!name) return;
+      selectVendor(name);
+    }
+
+    function selectVendor(name) {
+      selectedVendor = name;
+      document.getElementById('vendorLabel').textContent = name;
+      document.getElementById('vendorCard').style.display = 'none';
+      document.getElementById('uploadCard').style.display = 'block';
+    }
+
+    function resetVendor() {
+      selectedVendor = null;
+      document.getElementById('vendorCard').style.display = 'block';
+      document.getElementById('uploadCard').style.display = 'none';
+      document.getElementById('otherVendorBox').style.display = 'none';
+      document.getElementById('otherVendorInput').value = '';
+    }
 
     document.getElementById('fileInput').addEventListener('change', function(e) {
       const file = e.target.files[0];
@@ -165,13 +236,12 @@
         document.getElementById('preview').style.display = 'block';
         document.getElementById('formCard').style.display = 'none';
         document.getElementById('resultCard').style.display = 'none';
+        document.getElementById('priceAlert').style.display = 'none';
         runOcr();
       };
       reader.readAsDataURL(file);
     });
 
-    // Apps Script는 CORS preflight(OPTIONS)를 처리하지 않으므로
-    // text/plain으로 보내 단순 요청(preflight 없음)으로 처리한다.
     async function callApi(payload) {
       const res = await fetch(APPS_SCRIPT_URL, {
         method: 'POST',
@@ -184,42 +254,86 @@
     }
 
     async function runOcr() {
-      document.getElementById('ocrStatus').innerHTML = '<span class="spinner"></span>인식 중... (수 초 소요)';
+      document.getElementById('ocrStatus').innerHTML = '<span class="spinner"></span>인식 중... (10초 내외 소요)';
 
       try {
-        const data = await callApi({
-          action: 'ocr',
-          base64Data: base64Data,
-          mimeType: mimeType,
-          filename: 'upload.jpg'
-        });
+        const data = await callApi({ action: 'ocr', base64Data: base64Data, mimeType: mimeType });
 
         document.getElementById('ocrStatus').textContent = '';
         document.getElementById('fDate').value = data.date || '';
-        document.getElementById('fVendor').value = data.vendor || '';
-        document.getElementById('fAmount').value = data.amount || '';
+        renderItems(data.items && data.items.length > 0 ? data.items : [{ name: '', spec: '', qty: '', unitPrice: '', amount: '' }]);
 
         const dateLabel = data.date || '날짜 미인식';
-        const vendorLabel = data.vendor || '업체명 미인식';
-        document.getElementById('confirmHeadline').textContent =
-          `${dateLabel} · ${vendorLabel} 맞습니까?`;
+        document.getElementById('confirmHeadline').textContent = `${dateLabel} · ${selectedVendor}`;
 
         document.getElementById('formCard').style.display = 'block';
       } catch (err) {
         document.getElementById('ocrStatus').textContent = '';
         document.getElementById('errorMsg').textContent = 'OCR 오류: ' + err.message;
+        renderItems([{ name: '', spec: '', qty: '', unitPrice: '', amount: '' }]);
         document.getElementById('formCard').style.display = 'block';
       }
     }
 
+    function renderItems(items) {
+      const tbody = document.getElementById('itemsBody');
+      tbody.innerHTML = '';
+      items.forEach(item => addRow(item));
+      updateTotal();
+    }
+
+    function addRow(item) {
+      item = item || {};
+      const tbody = document.getElementById('itemsBody');
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="col-name"><input type="text" class="i-name" value="${escapeHtml(item.name || '')}"></td>
+        <td class="col-num"><input type="number" class="i-qty" value="${item.qty || ''}"></td>
+        <td class="col-num"><input type="number" class="i-price" value="${item.unitPrice || ''}"></td>
+        <td class="col-num"><input type="number" class="i-amount" value="${item.amount || ''}"></td>
+        <td><button type="button" class="row-del" onclick="this.closest('tr').remove(); updateTotal();">✕</button></td>
+      `;
+      tbody.appendChild(tr);
+      tr.querySelectorAll('input').forEach(inp => inp.addEventListener('input', updateTotal));
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function collectItems() {
+      const rows = document.querySelectorAll('#itemsBody tr');
+      const items = [];
+      rows.forEach(row => {
+        const name = row.querySelector('.i-name').value.trim();
+        const qty = row.querySelector('.i-qty').value;
+        const unitPrice = row.querySelector('.i-price').value;
+        const amount = row.querySelector('.i-amount').value;
+        if (name || qty || unitPrice || amount) {
+          items.push({
+            name: name,
+            qty: qty ? Number(qty) : '',
+            unitPrice: unitPrice ? Number(unitPrice) : '',
+            amount: amount ? Number(amount) : 0
+          });
+        }
+      });
+      return items;
+    }
+
+    function updateTotal() {
+      const items = collectItems();
+      const total = items.reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+      document.getElementById('totalRow').textContent = '합계: ' + total.toLocaleString('ko-KR') + '원';
+    }
+
     async function saveInvoice() {
       const date = document.getElementById('fDate').value;
-      const vendor = document.getElementById('fVendor').value.trim();
-      const amount = document.getElementById('fAmount').value.replace(/[^0-9]/g, '');
+      const items = collectItems();
       document.getElementById('errorMsg').textContent = '';
 
-      if (!date || !vendor || !amount) {
-        document.getElementById('errorMsg').textContent = '날짜/업체명/금액을 모두 입력해주세요.';
+      if (!date) {
+        document.getElementById('errorMsg').textContent = '날짜를 입력해주세요.';
         return;
       }
 
@@ -232,8 +346,8 @@
           base64Data: base64Data,
           mimeType: mimeType,
           date: date,
-          vendor: vendor,
-          amount: amount
+          vendor: selectedVendor,
+          items: items
         });
 
         document.getElementById('saveBtn').disabled = false;
@@ -242,6 +356,14 @@
         document.getElementById('resultCard').style.display = 'block';
         document.getElementById('resultPath').textContent = res.folderPath + ' / ' + res.fileName;
         document.getElementById('resultLink').href = res.fileUrl;
+        document.getElementById('sheetLink').href = res.sheetUrl;
+
+        if (res.priceChanges && res.priceChanges.length > 0) {
+          const alertBox = document.getElementById('priceAlert');
+          alertBox.style.display = 'block';
+          alertBox.innerHTML = '📩 단가 변동 감지 → 문자 발송됨<br>' +
+            res.priceChanges.map(c => `- ${c.name}: ${c.oldPrice.toLocaleString('ko-KR')}원 → ${c.newPrice.toLocaleString('ko-KR')}원`).join('<br>');
+        }
       } catch (err) {
         document.getElementById('saveBtn').disabled = false;
         document.getElementById('saveStatus').textContent = '';
@@ -249,14 +371,18 @@
       }
     }
 
-    function resetForm() {
+    function resetAll() {
       base64Data = null;
       mimeType = null;
       document.getElementById('fileInput').value = '';
       document.getElementById('preview').style.display = 'none';
       document.getElementById('formCard').style.display = 'none';
       document.getElementById('resultCard').style.display = 'none';
+      document.getElementById('priceAlert').style.display = 'none';
+      resetVendor();
     }
+
+    initVendorButtons();
   </script>
 </body>
 </html>
