@@ -45,6 +45,16 @@
     background: #2c7a4b; color: #fff; border-radius: 10px; font-size: 15px; cursor: pointer;
   }
   #preview { width: 100%; border-radius: 8px; margin-top: 12px; display: none; }
+  .preview-wrap { position: relative; }
+  .ocr-overlay {
+    display: none;
+    position: absolute; top: 12px; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.6);
+    color: #fff;
+    align-items: center; justify-content: center;
+    font-size: 15px; border-radius: 8px; text-align: center; padding: 20px;
+  }
+  .ocr-overlay .spinner { border-color: rgba(255,255,255,0.4); border-top-color: #fff; }
 
   .confirm-title { font-size: 16px; font-weight: bold; margin-bottom: 4px; }
   .confirm-sub { font-size: 13px; color: #888; margin-bottom: 16px; }
@@ -85,6 +95,10 @@
     border-radius: 10px; padding: 12px; font-size: 13px; font-weight: bold; color: #a05a00;
   }
   .balance-warning .sub-line { font-weight: normal; margin-top: 4px; }
+  .duplicate-warning {
+    display: none; margin-top: 12px; background: #fdecea; border: 2px solid #c0392b;
+    border-radius: 10px; padding: 14px; font-size: 14px; font-weight: bold; color: #c0392b; text-align: center;
+  }
 
   button.action {
     width: 100%; padding: 14px; border: none; border-radius: 10px;
@@ -118,7 +132,7 @@
   <div class="sub">거래처 선택 → 촬영 → 확인 → 저장</div>
 
   <script>
-    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbybgg9akEKgKeMH-AmHzVybMnUUhoA12nB0WHvAoE_JZGR-dYjzKwi9TCAqGL9cNOdj/exec';
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxCd8pzmK3umdOyC_xTiG9IywGvvoI5VVV6tXTrOHC39KhaUuAVuzQtg0KFhXU1nd3e/exec';
     const VENDOR_PRESETS = ['성진에프에스', '미나퍼시픽', '대림수산'];
   </script>
 
@@ -140,8 +154,11 @@
     </div>
     <label class="upload-btn" for="fileInput">📷 거래명세서 촬영 / 선택</label>
     <input type="file" id="fileInput" accept="image/*">
-    <img id="preview">
-    <div class="status" id="ocrStatus"></div>
+    <div class="preview-wrap">
+      <img id="preview">
+      <div class="ocr-overlay" id="ocrStatus"></div>
+    </div>
+    <div class="status" id="ocrError"></div>
   </div>
 
   <div class="card" id="formCard" style="display:none;">
@@ -152,6 +169,13 @@
     <input type="text" id="fDate" placeholder="2026-08-25" inputmode="numeric">
 
     <div class="balance-warning" id="balanceWarning"></div>
+    <div class="duplicate-warning" id="duplicateWarning">
+      ⚠️ 이미 제출된 날짜입니다.<br>같은 거래처의 같은 날짜 명세서가 이미 등록되어 있어요.
+      <label style="display:flex; align-items:center; gap:6px; margin-top:10px; font-weight:normal; font-size:13px; justify-content:center;">
+        <input type="checkbox" id="duplicateOverride" onchange="updateSubmitState()">
+        추가발주입니다 (같은 날짜 중복 등록을 허용합니다)
+      </label>
+    </div>
 
     <label>품목 내역</label>
     <div class="items-scroll">
@@ -205,6 +229,7 @@
     let mimeType = null;
     let extractedSummary = {};
     let hasMismatch = false;
+    let isDuplicateDate = false;
 
     function initVendorButtons() {
       const grid = document.getElementById('vendorGrid');
@@ -275,28 +300,41 @@
     }
 
     async function runOcr() {
-      document.getElementById('ocrStatus').innerHTML = '<span class="spinner"></span>인식 중... (10초 내외 소요)';
+      const overlay = document.getElementById('ocrStatus');
+      overlay.style.display = 'flex';
+      overlay.innerHTML = '<span class="spinner"></span>인식 중입니다... (10초 내외 소요)';
+      document.getElementById('ocrError').textContent = '';
 
       try {
         const data = await callApi({ action: 'ocr', base64Data: base64Data, mimeType: mimeType, vendor: selectedVendor });
 
-        document.getElementById('ocrStatus').textContent = '';
+        overlay.style.display = 'none';
         document.getElementById('fDate').value = data.date || '';
         extractedSummary = data.summary || {};
 
         renderItems(data.items && data.items.length > 0 ? data.items : [emptyItem()]);
         renderBalanceContinuityWarning(data.balanceCheck);
+        renderDuplicateWarning(data.isDuplicate);
 
         const dateLabel = data.date || '날짜 미인식';
         document.getElementById('confirmHeadline').textContent = `${dateLabel} · ${selectedVendor}`;
 
         document.getElementById('formCard').style.display = 'block';
+        scrollToFormCard();
       } catch (err) {
-        document.getElementById('ocrStatus').textContent = '';
-        document.getElementById('errorMsg').textContent = 'OCR 오류: ' + err.message;
+        overlay.style.display = 'none';
+        document.getElementById('ocrError').textContent = 'OCR 오류: ' + err.message;
         renderItems([emptyItem()]);
         document.getElementById('formCard').style.display = 'block';
+        scrollToFormCard();
       }
+    }
+
+    function scrollToFormCard() {
+      // 렌더링이 끝난 다음 프레임에 스크롤해야 정확한 위치로 이동함
+      requestAnimationFrame(() => {
+        document.getElementById('formCard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     }
 
     function emptyItem() {
@@ -324,6 +362,13 @@
         </div>
       `;
       box.style.display = 'block';
+    }
+
+    function renderDuplicateWarning(isDuplicate) {
+      isDuplicateDate = !!isDuplicate;
+      document.getElementById('duplicateWarning').style.display = isDuplicateDate ? 'block' : 'none';
+      document.getElementById('duplicateOverride').checked = false;
+      updateSubmitState();
     }
 
     function renderItems(items) {
@@ -471,7 +516,8 @@
     }
 
     function updateSubmitState() {
-      document.getElementById('saveBtn').disabled = hasMismatch;
+      const duplicateOk = !isDuplicateDate || document.getElementById('duplicateOverride').checked;
+      document.getElementById('saveBtn').disabled = hasMismatch || !duplicateOk;
     }
 
     async function saveInvoice() {
@@ -491,6 +537,10 @@
         document.getElementById('errorMsg').textContent = '금액 불일치/계산오류를 먼저 해결해주세요.';
         return;
       }
+      if (isDuplicateDate && !document.getElementById('duplicateOverride').checked) {
+        document.getElementById('errorMsg').textContent = '이미 제출된 날짜입니다. 추가발주라면 체크박스를 확인해주세요.';
+        return;
+      }
 
       document.getElementById('saveBtn').disabled = true;
       document.getElementById('saveStatus').innerHTML = '<span class="spinner"></span>저장 중...';
@@ -503,7 +553,8 @@
           date: date,
           vendor: selectedVendor,
           items: items,
-          summary: extractedSummary
+          summary: extractedSummary,
+          allowDuplicate: isDuplicateDate && document.getElementById('duplicateOverride').checked
         });
 
         document.getElementById('saveBtn').disabled = false;
@@ -541,13 +592,17 @@
       mimeType = null;
       extractedSummary = {};
       hasMismatch = false;
+      isDuplicateDate = false;
       document.getElementById('fileInput').value = '';
       document.getElementById('preview').style.display = 'none';
+      document.getElementById('ocrStatus').style.display = 'none';
+      document.getElementById('ocrError').textContent = '';
       document.getElementById('formCard').style.display = 'none';
       document.getElementById('resultCard').style.display = 'none';
       document.getElementById('priceAlert').style.display = 'none';
       document.getElementById('mismatchWarning').style.display = 'none';
       document.getElementById('balanceWarning').style.display = 'none';
+      document.getElementById('duplicateWarning').style.display = 'none';
       resetVendor();
     }
 
