@@ -136,7 +136,7 @@
   <div class="sub">거래처 선택 → 촬영 → 확인 → 저장</div>
 
   <script>
-    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyR8nymTs4O0BnIvlGil8DbdsopCaUaTLM_bAkOGMzhQaFwhKYBd_o0Q6d6MRfQQUV1/exec';
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzwBeTTKfmV0hl3w0fWdFsgTfV_5WX596lFQHkYvpq3YUO7n7RHQXK4BIy0LAqwnLxK/exec';
     const VENDOR_PRESETS = ['성진에프에스', '미나퍼시픽', '대림수산', '남성주류', '동래상사'];
   </script>
 
@@ -214,8 +214,12 @@
       <div class="row" style="color:#888;"><span>명세서 부가세</span><span id="sumVat">0원</span></div>
       <div class="row total" id="sumFinalTotalRow"><span>명세서 최종합계</span><span id="sumFinalTotal">0원</span></div>
 
-      <div class="row balance-input-row" style="margin-top:10px;">
-        <span>이전 미수금 (수정 가능)</span>
+      <div class="row" style="margin-top:10px; color:#888;">
+        <span>이전미수금(데이터기반)</span>
+        <span id="sumPrevBalanceDataBased">기록 없음</span>
+      </div>
+      <div class="row balance-input-row">
+        <span>이전미수금(명세서기반, 수정가능)</span>
         <input type="number" id="fPrevBalance" placeholder="0">
       </div>
       <div class="row balance-input-row">
@@ -349,6 +353,11 @@
           document.getElementById('fPrevBalance').value = extractedSummary.previousBalance || '';
           document.getElementById('fTodayPayment').value = extractedSummary.todayPayment || '';
 
+          const dataBasedSpan = document.getElementById('sumPrevBalanceDataBased');
+          dataBasedSpan.textContent = lastKnownBalanceInfo
+            ? `${Number(lastKnownBalanceInfo.balance).toLocaleString('ko-KR')}원 (${lastKnownBalanceInfo.date} 기준)`
+            : '기록 없음 (이 거래처 최초 등록)';
+
           renderItems(data.items && data.items.length > 0 ? data.items : [emptyItem()]);
           renderDuplicateWarning(data.isDuplicate);
 
@@ -405,15 +414,15 @@
       }
 
       const fmt = n => Number(n || 0).toLocaleString('ko-KR') + '원';
-      const diffLabel = diff > 0 ? `${fmt(diff)} 더 많음` : `${fmt(Math.abs(diff))} 더 적음`;
+      const diffAbs = fmt(Math.abs(diff));
 
       box.innerHTML = `
-        ⚠️ 미수금 연속성 확인 필요
+        ⚠️ 금액 ${diffAbs} 차이 발생 — 누락된 명세서가 있는지 검토가 필요해요
         <div class="sub-line">
-          우리 기록상 마지막 미수금(${lastKnownBalanceInfo.date} 기준): ${fmt(lastKnownBalanceInfo.balance)}<br>
-          입력된 이전 미수금: ${fmt(currentPrevBalanceInput)} (${diffLabel})<br>
-          OCR이 잘못 읽었다면 위 '이전 미수금' 칸을 우리 기록에 맞게 고쳐주세요.
-          실제로 명세서가 누락된 거라면 이대로 제출 후 누락분을 따로 찾아 올려주세요.
+          데이터기반(우리 기록, ${lastKnownBalanceInfo.date} 기준): ${fmt(lastKnownBalanceInfo.balance)}<br>
+          명세서기반(이 명세서에 적힌 값): ${fmt(currentPrevBalanceInput)}<br>
+          OCR이 잘못 읽었을 뿐이라면 위 '이전미수금(명세서기반)' 칸을 실제 명세서 값에 맞게 고쳐주세요.
+          진짜로 중간에 명세서가 빠진 거라면 이대로 제출해도 되고, 나중에 누락분을 찾아 올려주세요.
         </div>
       `;
       box.style.display = 'block';
@@ -662,6 +671,7 @@
       isDuplicateDate = false;
       lastKnownBalanceInfo = null;
       document.getElementById('fPrevBalance').value = '';
+      document.getElementById('sumPrevBalanceDataBased').textContent = '기록 없음';
       document.getElementById('fTodayPayment').value = '';
       document.getElementById('fileInput').value = '';
       document.getElementById('preview').style.display = 'none';
