@@ -95,6 +95,10 @@
     border-radius: 10px; padding: 12px; font-size: 13px; font-weight: bold; color: #a05a00;
   }
   .balance-warning .sub-line { font-weight: normal; margin-top: 4px; }
+  .balance-input-row input {
+    width: 110px; text-align: right; padding: 4px 6px; font-size: 13px;
+    border: 1px solid #ddd; border-radius: 6px;
+  }
   .duplicate-warning {
     display: none; margin-top: 12px; background: #fdecea; border: 2px solid #c0392b;
     border-radius: 10px; padding: 14px; font-size: 14px; font-weight: bold; color: #c0392b; text-align: center;
@@ -132,8 +136,8 @@
   <div class="sub">거래처 선택 → 촬영 → 확인 → 저장</div>
 
   <script>
-    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxCd8pzmK3umdOyC_xTiG9IywGvvoI5VVV6tXTrOHC39KhaUuAVuzQtg0KFhXU1nd3e/exec';
-    const VENDOR_PRESETS = ['성진에프에스', '미나퍼시픽', '대림수산'];
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyR8nymTs4O0BnIvlGil8DbdsopCaUaTLM_bAkOGMzhQaFwhKYBd_o0Q6d6MRfQQUV1/exec';
+    const VENDOR_PRESETS = ['성진에프에스', '미나퍼시픽', '대림수산', '남성주류', '동래상사'];
   </script>
 
   <div class="card" id="vendorCard">
@@ -201,7 +205,25 @@
     </div>
     <button type="button" class="add-row-btn" onclick="addRow()">+ 품목 추가</button>
 
-    <div class="summary-box" id="summaryBox"></div>
+    <div class="summary-box">
+      <div class="row"><span>품목 공급가액 합</span><span id="sumItemAmount">0원</span></div>
+      <div class="row"><span>품목 부가세 합</span><span id="sumItemVat">0원</span></div>
+      <div class="row total"><span>품목 합계 합</span><span id="sumItemTotal">0원</span></div>
+      <div class="row" style="margin-top:8px; color:#888;"><span>명세서 비과세금액</span><span id="sumTaxFree">0원</span></div>
+      <div class="row" style="color:#888;"><span>명세서 과세금액</span><span id="sumTaxable">0원</span></div>
+      <div class="row" style="color:#888;"><span>명세서 부가세</span><span id="sumVat">0원</span></div>
+      <div class="row total" id="sumFinalTotalRow"><span>명세서 최종합계</span><span id="sumFinalTotal">0원</span></div>
+
+      <div class="row balance-input-row" style="margin-top:10px;">
+        <span>이전 미수금 (수정 가능)</span>
+        <input type="number" id="fPrevBalance" placeholder="0">
+      </div>
+      <div class="row balance-input-row">
+        <span>당일 입금액 (수정 가능)</span>
+        <input type="number" id="fTodayPayment" placeholder="0">
+      </div>
+      <div class="row total"><span>현재 미수금 (자동 계산)</span><span id="sumCurrentBalance">0원</span></div>
+    </div>
     <div class="mismatch-warning" id="mismatchWarning" style="display:none;">
       <div id="warningText"></div>
       <div style="margin-top:8px; font-weight:normal; font-size:13px;">
@@ -299,34 +321,58 @@
       return json.data;
     }
 
+    function delay(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
     async function runOcr() {
       const overlay = document.getElementById('ocrStatus');
-      overlay.style.display = 'flex';
-      overlay.innerHTML = '<span class="spinner"></span>인식 중입니다... (10초 내외 소요)';
       document.getElementById('ocrError').textContent = '';
 
-      try {
-        const data = await callApi({ action: 'ocr', base64Data: base64Data, mimeType: mimeType, vendor: selectedVendor });
+      const maxRetries = 2;
+      let attempt = 0;
 
-        overlay.style.display = 'none';
-        document.getElementById('fDate').value = data.date || '';
-        extractedSummary = data.summary || {};
+      while (true) {
+        overlay.style.display = 'flex';
+        overlay.innerHTML = attempt === 0
+          ? '<span class="spinner"></span>인식 중입니다... (최대 60초 내외 소요)'
+          : `<span class="spinner"></span>서버 혼잡 - 재시도 중입니다 (${attempt}/${maxRetries})`;
 
-        renderItems(data.items && data.items.length > 0 ? data.items : [emptyItem()]);
-        renderBalanceContinuityWarning(data.balanceCheck);
-        renderDuplicateWarning(data.isDuplicate);
+        try {
+          const data = await callApi({ action: 'ocr', base64Data: base64Data, mimeType: mimeType, vendor: selectedVendor });
 
-        const dateLabel = data.date || '날짜 미인식';
-        document.getElementById('confirmHeadline').textContent = `${dateLabel} · ${selectedVendor}`;
+          overlay.style.display = 'none';
+          document.getElementById('fDate').value = data.date || '';
+          extractedSummary = data.summary || {};
+          lastKnownBalanceInfo = data.lastKnownBalance || null;
 
-        document.getElementById('formCard').style.display = 'block';
-        scrollToFormCard();
-      } catch (err) {
-        overlay.style.display = 'none';
-        document.getElementById('ocrError').textContent = 'OCR 오류: ' + err.message;
-        renderItems([emptyItem()]);
-        document.getElementById('formCard').style.display = 'block';
-        scrollToFormCard();
+          document.getElementById('fPrevBalance').value = extractedSummary.previousBalance || '';
+          document.getElementById('fTodayPayment').value = extractedSummary.todayPayment || '';
+
+          renderItems(data.items && data.items.length > 0 ? data.items : [emptyItem()]);
+          renderDuplicateWarning(data.isDuplicate);
+
+          const dateLabel = data.date || '날짜 미인식';
+          document.getElementById('confirmHeadline').textContent = `${dateLabel} · ${selectedVendor}`;
+
+          document.getElementById('formCard').style.display = 'block';
+          scrollToFormCard();
+          return;
+        } catch (err) {
+          const isRetryable = /quota|high demand|unavailable|overloaded|429|503/i.test(err.message || '');
+          if (isRetryable && attempt < maxRetries) {
+            attempt++;
+            overlay.innerHTML = `<span class="spinner"></span>서버 혼잡 - 20초 후 재시도 예정 (${attempt}/${maxRetries})`;
+            await delay(20000);
+            continue;
+          }
+          overlay.style.display = 'none';
+          document.getElementById('ocrError').textContent = 'OCR 오류: ' + err.message;
+          renderItems([emptyItem()]);
+          document.getElementById('formCard').style.display = 'block';
+          scrollToFormCard();
+          return;
+        }
       }
     }
 
@@ -341,24 +387,33 @@
       return { no: '', name: '', spec: '', origin: '', unit: '', qty: '', unitPrice: '', amount: '', vat: '', itemTotal: '', note: '' };
     }
 
-    function renderBalanceContinuityWarning(balanceCheck) {
+    let lastKnownBalanceInfo = null; // {date, balance} 또는 null (해당 거래처 최초 등록이면 null)
+
+    function updateBalanceContinuityLive(currentPrevBalanceInput) {
       const box = document.getElementById('balanceWarning');
-      if (!balanceCheck) {
+      if (!lastKnownBalanceInfo || !currentPrevBalanceInput) {
         box.style.display = 'none';
         box.innerHTML = '';
         return;
       }
+
+      const diff = currentPrevBalanceInput - lastKnownBalanceInfo.balance;
+      if (Math.abs(diff) <= 1) {
+        box.style.display = 'none';
+        box.innerHTML = '';
+        return;
+      }
+
       const fmt = n => Number(n || 0).toLocaleString('ko-KR') + '원';
-      const diffLabel = balanceCheck.diff > 0
-        ? `${fmt(balanceCheck.diff)} 더 많음`
-        : `${fmt(Math.abs(balanceCheck.diff))} 더 적음`;
+      const diffLabel = diff > 0 ? `${fmt(diff)} 더 많음` : `${fmt(Math.abs(diff))} 더 적음`;
 
       box.innerHTML = `
         ⚠️ 미수금 연속성 확인 필요
         <div class="sub-line">
-          우리 기록상 마지막 미수금(${balanceCheck.lastKnownDate} 기준): ${fmt(balanceCheck.lastKnownBalance)}<br>
-          이 명세서의 전일미수금: ${fmt(balanceCheck.thisInvoicePreviousBalance)} (${diffLabel})<br>
-          중간에 명세서가 누락됐을 수 있어요. 제출은 가능하지만, 확인 후 누락분을 따로 찾아 올려주세요.
+          우리 기록상 마지막 미수금(${lastKnownBalanceInfo.date} 기준): ${fmt(lastKnownBalanceInfo.balance)}<br>
+          입력된 이전 미수금: ${fmt(currentPrevBalanceInput)} (${diffLabel})<br>
+          OCR이 잘못 읽었다면 위 '이전 미수금' 칸을 우리 기록에 맞게 고쳐주세요.
+          실제로 명세서가 누락된 거라면 이대로 제출 후 누락분을 따로 찾아 올려주세요.
         </div>
       `;
       box.style.display = 'block';
@@ -370,6 +425,7 @@
       document.getElementById('duplicateOverride').checked = false;
       updateSubmitState();
     }
+
 
     function renderItems(items) {
       const tbody = document.getElementById('itemsBody');
@@ -441,9 +497,6 @@
       const summaryMismatch = extractedTotal > 0 && Math.abs(extractedTotal - itemTotalSum) > 1;
 
       // 품목별 계산 검증
-      // - 부가세가 있는 품목(공산품 등): 단가에 부가세가 포함된 것으로 보고 수량×단가=합계 를 확인
-      // - 부가세가 없는 품목(면세 농산물 등): 수량×단가=공급가액 을 확인
-      // - 부가세가 있는 경우, 공급가액+부가세=합계 인지도 함께 검산
       const calcIssues = [];
       const rows = document.querySelectorAll('#itemsBody tr');
       rows.forEach((row, idx) => {
@@ -488,18 +541,23 @@
 
       const fmt = n => Number(n || 0).toLocaleString('ko-KR') + '원';
 
-      document.getElementById('summaryBox').innerHTML = `
-        <div class="row"><span>품목 공급가액 합</span><span>${fmt(itemAmountSum)}</span></div>
-        <div class="row"><span>품목 부가세 합</span><span>${fmt(itemVatSum)}</span></div>
-        <div class="row total"><span>품목 합계 합</span><span>${fmt(itemTotalSum)}</span></div>
-        <div class="row" style="margin-top:8px; color:#888;"><span>명세서 비과세금액</span><span>${fmt(s.taxFreeAmount)}</span></div>
-        <div class="row" style="color:#888;"><span>명세서 과세금액</span><span>${fmt(s.taxableAmount)}</span></div>
-        <div class="row" style="color:#888;"><span>명세서 부가세</span><span>${fmt(s.vatAmount)}</span></div>
-        <div class="row total ${summaryMismatch ? 'mismatch' : ''}"><span>명세서 최종합계</span><span>${fmt(s.totalAmount)}${summaryMismatch ? ' ⚠️ 불일치' : ''}</span></div>
-        <div class="row" style="margin-top:8px; color:#888;"><span>이전 미수금</span><span>${fmt(s.previousBalance)}</span></div>
-        <div class="row" style="color:#888;"><span>당일 입금액</span><span>${fmt(s.todayPayment)}</span></div>
-        <div class="row total"><span>현재 미수금</span><span>${fmt(s.currentBalance)}</span></div>
-      `;
+      document.getElementById('sumItemAmount').textContent = fmt(itemAmountSum);
+      document.getElementById('sumItemVat').textContent = fmt(itemVatSum);
+      document.getElementById('sumItemTotal').textContent = fmt(itemTotalSum);
+      document.getElementById('sumTaxFree').textContent = fmt(s.taxFreeAmount);
+      document.getElementById('sumTaxable').textContent = fmt(s.taxableAmount);
+      document.getElementById('sumVat').textContent = fmt(s.vatAmount);
+      document.getElementById('sumFinalTotal').textContent = fmt(s.totalAmount) + (summaryMismatch ? ' ⚠️ 불일치' : '');
+      document.getElementById('sumFinalTotalRow').classList.toggle('mismatch', summaryMismatch);
+
+      // 현재 미수금 = 우리 기록상 마지막 미수금(=이전 미수금 입력값) + 명세서 합계 - 당일 입금액
+      // OCR이 currentBalance를 따로 읽은 값은 신뢰하지 않고, 항상 이 계산식으로 도출함
+      const prevBalance = Number(document.getElementById('fPrevBalance').value) || 0;
+      const todayPayment = Number(document.getElementById('fTodayPayment').value) || 0;
+      const currentBalance = prevBalance + itemTotalSum - todayPayment;
+      document.getElementById('sumCurrentBalance').textContent = fmt(currentBalance);
+
+      updateBalanceContinuityLive(prevBalance);
 
       const warningBox = document.getElementById('mismatchWarning');
       const warningText = document.getElementById('warningText');
@@ -545,6 +603,15 @@
       document.getElementById('saveBtn').disabled = true;
       document.getElementById('saveStatus').innerHTML = '<span class="spinner"></span>저장 중...';
 
+      const itemTotalSum = items.reduce((s, i) => s + (Number(i.itemTotal) || 0), 0);
+      const prevBalance = Number(document.getElementById('fPrevBalance').value) || 0;
+      const todayPayment = Number(document.getElementById('fTodayPayment').value) || 0;
+      const finalSummary = Object.assign({}, extractedSummary, {
+        previousBalance: prevBalance,
+        todayPayment: todayPayment,
+        currentBalance: prevBalance + itemTotalSum - todayPayment
+      });
+
       try {
         const res = await callApi({
           action: 'save',
@@ -553,7 +620,7 @@
           date: date,
           vendor: selectedVendor,
           items: items,
-          summary: extractedSummary,
+          summary: finalSummary,
           allowDuplicate: isDuplicateDate && document.getElementById('duplicateOverride').checked
         });
 
@@ -593,6 +660,9 @@
       extractedSummary = {};
       hasMismatch = false;
       isDuplicateDate = false;
+      lastKnownBalanceInfo = null;
+      document.getElementById('fPrevBalance').value = '';
+      document.getElementById('fTodayPayment').value = '';
       document.getElementById('fileInput').value = '';
       document.getElementById('preview').style.display = 'none';
       document.getElementById('ocrStatus').style.display = 'none';
@@ -605,6 +675,22 @@
       document.getElementById('duplicateWarning').style.display = 'none';
       resetVendor();
     }
+
+    // 확인 화면에서 날짜를 직접 수정했을 때, 중복 제출 여부를 그 날짜 기준으로 다시 확인
+    document.getElementById('fDate').addEventListener('change', async function () {
+      const date = this.value;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !selectedVendor) return;
+      try {
+        const data = await callApi({ action: 'checkDuplicate', vendor: selectedVendor, date: date });
+        renderDuplicateWarning(data.isDuplicate);
+      } catch (err) {
+        // 재확인 실패해도 무시 — 최종 확인은 어차피 제출 시 서버가 다시 함
+      }
+    });
+
+    // 이전미수금/당일입금액을 직접 수정하면 현재미수금과 연속성 경고가 바로 재계산됨
+    document.getElementById('fPrevBalance').addEventListener('input', updateSummary);
+    document.getElementById('fTodayPayment').addEventListener('input', updateSummary);
 
     initVendorButtons();
   </script>
