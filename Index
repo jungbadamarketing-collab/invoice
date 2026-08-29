@@ -115,7 +115,7 @@
 
   <!-- 설정: Apps Script 배포 URL을 여기에 붙여넣으세요 -->
   <script>
-    const APPS_SCRIPT_URL = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbytjF8AA8_91yTjxJhgc7cltCYIXJRuUyFSWEtPWiylRKTTA-5gs7--ATg9mrTRN5XH/exec';
   </script>
 
   <div class="card" id="uploadCard">
