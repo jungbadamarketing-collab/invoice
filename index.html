@@ -8,7 +8,7 @@
   * { box-sizing: border-box; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif;
-    max-width: 520px;
+    max-width: 560px;
     margin: 0 auto;
     padding: 16px;
     background: #f7f7f8;
@@ -25,22 +25,11 @@
     box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   }
 
-  /* 거래처 선택 화면 */
-  .vendor-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-  }
+  .vendor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .vendor-btn {
-    padding: 20px 10px;
-    background: #f0f4f1;
-    border: 2px solid transparent;
-    border-radius: 10px;
-    font-size: 15px;
-    font-weight: bold;
-    color: #2c7a4b;
-    cursor: pointer;
-    text-align: center;
+    padding: 20px 10px; background: #f0f4f1; border: 2px solid transparent;
+    border-radius: 10px; font-size: 15px; font-weight: bold; color: #2c7a4b;
+    cursor: pointer; text-align: center;
   }
   .vendor-btn.other { background: #f4f4f4; color: #555; }
   .selected-vendor-bar {
@@ -48,9 +37,7 @@
     background: #eaf7ee; border-radius: 10px; padding: 10px 14px;
     margin-bottom: 16px; font-size: 14px;
   }
-  .selected-vendor-bar button {
-    background: none; border: none; color: #2c7a4b; font-size: 13px; cursor: pointer; text-decoration: underline;
-  }
+  .selected-vendor-bar button { background: none; border: none; color: #2c7a4b; font-size: 13px; cursor: pointer; text-decoration: underline; }
 
   input[type="file"] { display: none; }
   .upload-btn {
@@ -67,18 +54,27 @@
     width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px;
   }
 
-  table.items { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px; }
-  table.items th { text-align: left; font-weight: normal; color: #888; padding: 4px; border-bottom: 1px solid #eee; }
-  table.items td { padding: 4px 2px; vertical-align: middle; }
-  table.items input { padding: 6px; font-size: 13px; }
-  .col-name input { width: 100%; }
-  .col-num input { width: 100%; text-align: right; }
-  .row-del { background: none; border: none; color: #c0392b; font-size: 16px; cursor: pointer; padding: 4px 8px; }
+  .items-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 8px; }
+  table.items { border-collapse: collapse; font-size: 12px; white-space: nowrap; }
+  table.items th { text-align: left; font-weight: normal; color: #888; padding: 4px 6px; border-bottom: 1px solid #eee; }
+  table.items td { padding: 3px 3px; vertical-align: middle; }
+  table.items input { padding: 5px; font-size: 12px; border: 1px solid #ddd; border-radius: 6px; }
+  .col-name input { width: 110px; }
+  .col-mid input { width: 60px; }
+  .col-num input { width: 64px; text-align: right; }
+  .col-note input { width: 80px; }
+  .row-del { background: none; border: none; color: #c0392b; font-size: 16px; cursor: pointer; padding: 4px 6px; }
   .add-row-btn {
     margin-top: 8px; background: #eee; color: #333; border: none;
     border-radius: 8px; padding: 8px 12px; font-size: 13px; cursor: pointer;
   }
-  .total-row { text-align: right; font-size: 14px; font-weight: bold; margin-top: 10px; }
+
+  .summary-box {
+    margin-top: 14px; background: #f7f7f8; border-radius: 10px; padding: 12px; font-size: 13px;
+  }
+  .summary-box .row { display: flex; justify-content: space-between; padding: 2px 0; }
+  .summary-box .row.total { font-weight: bold; border-top: 1px solid #ddd; margin-top: 6px; padding-top: 6px; }
+  .summary-box .mismatch { color: #c0392b; }
 
   button.action {
     width: 100%; padding: 14px; border: none; border-radius: 10px;
@@ -112,11 +108,10 @@
   <div class="sub">거래처 선택 → 촬영 → 확인 → 저장</div>
 
   <script>
-    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxvzr8gn6O5ansrHr-LhhlkXyDFm7FPyd5vXiYq96dUhnJWoq27WqpSo_QkfQ722MFV/exec';
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby9dbYedZJd73qx--OB82Y5LYBHuJcCtGBewGOKhXsX6k9qETudwrRjz773pnFxGfHJ/exec';
     const VENDOR_PRESETS = ['성진에프에스', '미나퍼시픽', '대림수산'];
   </script>
 
-  <!-- 1단계: 거래처 선택 -->
   <div class="card" id="vendorCard">
     <label style="margin-top:0;">거래처를 선택하세요</label>
     <div class="vendor-grid" id="vendorGrid"></div>
@@ -127,7 +122,6 @@
     </div>
   </div>
 
-  <!-- 2단계: 촬영 -->
   <div class="card" id="uploadCard" style="display:none;">
     <div class="selected-vendor-bar">
       <span>거래처: <b id="vendorLabel"></b></span>
@@ -139,36 +133,44 @@
     <div class="status" id="ocrStatus"></div>
   </div>
 
-  <!-- 3단계: 확인 -->
   <div class="card" id="formCard" style="display:none;">
     <div class="confirm-title" id="confirmHeadline"></div>
-    <div class="confirm-sub">인식 결과가 맞는지 확인해주세요. 틀리면 아래에서 직접 수정해주세요.</div>
+    <div class="confirm-sub">인식 결과가 맞는지 확인해주세요. 옆으로 스크롤하면 나머지 항목도 보여요.</div>
 
     <label>날짜</label>
     <input type="date" id="fDate">
 
     <label>품목 내역</label>
-    <table class="items" id="itemsTable">
-      <thead>
-        <tr>
-          <th class="col-name">품목명</th>
-          <th class="col-num" style="width:44px;">수량</th>
-          <th class="col-num" style="width:64px;">단가</th>
-          <th class="col-num" style="width:72px;">공급가액</th>
-          <th style="width:24px;"></th>
-        </tr>
-      </thead>
-      <tbody id="itemsBody"></tbody>
-    </table>
+    <div class="items-scroll">
+      <table class="items" id="itemsTable">
+        <thead>
+          <tr>
+            <th class="col-mid">번호</th>
+            <th class="col-name">품명</th>
+            <th class="col-mid">규격</th>
+            <th class="col-mid">원산지</th>
+            <th class="col-mid">단위</th>
+            <th class="col-mid">수량</th>
+            <th class="col-num">단가</th>
+            <th class="col-num">공급금액</th>
+            <th class="col-num">부가세</th>
+            <th class="col-num">합계</th>
+            <th class="col-note">비고</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="itemsBody"></tbody>
+      </table>
+    </div>
     <button type="button" class="add-row-btn" onclick="addRow()">+ 품목 추가</button>
-    <div class="total-row" id="totalRow">합계: 0원</div>
+
+    <div class="summary-box" id="summaryBox"></div>
 
     <button class="action" id="saveBtn" onclick="saveInvoice()">제출하기</button>
     <div class="status" id="saveStatus"></div>
     <div class="error" id="errorMsg"></div>
   </div>
 
-  <!-- 4단계: 결과 -->
   <div class="result" id="resultCard">
     ✅ 저장 완료<br>
     <span id="resultPath"></span><br><br>
@@ -182,6 +184,7 @@
     let selectedVendor = null;
     let base64Data = null;
     let mimeType = null;
+    let extractedSummary = {};
 
     function initVendorButtons() {
       const grid = document.getElementById('vendorGrid');
@@ -196,9 +199,7 @@
       const otherBtn = document.createElement('button');
       otherBtn.className = 'vendor-btn other';
       otherBtn.textContent = '기타';
-      otherBtn.onclick = () => {
-        document.getElementById('otherVendorBox').style.display = 'block';
-      };
+      otherBtn.onclick = () => { document.getElementById('otherVendorBox').style.display = 'block'; };
       grid.appendChild(otherBtn);
     }
 
@@ -261,7 +262,9 @@
 
         document.getElementById('ocrStatus').textContent = '';
         document.getElementById('fDate').value = data.date || '';
-        renderItems(data.items && data.items.length > 0 ? data.items : [{ name: '', spec: '', qty: '', unitPrice: '', amount: '' }]);
+        extractedSummary = data.summary || {};
+
+        renderItems(data.items && data.items.length > 0 ? data.items : [emptyItem()]);
 
         const dateLabel = data.date || '날짜 미인식';
         document.getElementById('confirmHeadline').textContent = `${dateLabel} · ${selectedVendor}`;
@@ -270,31 +273,42 @@
       } catch (err) {
         document.getElementById('ocrStatus').textContent = '';
         document.getElementById('errorMsg').textContent = 'OCR 오류: ' + err.message;
-        renderItems([{ name: '', spec: '', qty: '', unitPrice: '', amount: '' }]);
+        renderItems([emptyItem()]);
         document.getElementById('formCard').style.display = 'block';
       }
+    }
+
+    function emptyItem() {
+      return { no: '', name: '', spec: '', origin: '', unit: '', qty: '', unitPrice: '', amount: '', vat: '', itemTotal: '', note: '' };
     }
 
     function renderItems(items) {
       const tbody = document.getElementById('itemsBody');
       tbody.innerHTML = '';
       items.forEach(item => addRow(item));
-      updateTotal();
+      updateSummary();
     }
 
     function addRow(item) {
-      item = item || {};
+      item = item || emptyItem();
       const tbody = document.getElementById('itemsBody');
       const tr = document.createElement('tr');
       tr.innerHTML = `
+        <td class="col-mid"><input type="text" class="i-no" value="${escapeHtml(item.no || '')}"></td>
         <td class="col-name"><input type="text" class="i-name" value="${escapeHtml(item.name || '')}"></td>
-        <td class="col-num"><input type="number" class="i-qty" value="${item.qty || ''}"></td>
+        <td class="col-mid"><input type="text" class="i-spec" value="${escapeHtml(item.spec || '')}"></td>
+        <td class="col-mid"><input type="text" class="i-origin" value="${escapeHtml(item.origin || '')}"></td>
+        <td class="col-mid"><input type="text" class="i-unit" value="${escapeHtml(item.unit || '')}"></td>
+        <td class="col-mid"><input type="number" class="i-qty" value="${item.qty || ''}"></td>
         <td class="col-num"><input type="number" class="i-price" value="${item.unitPrice || ''}"></td>
         <td class="col-num"><input type="number" class="i-amount" value="${item.amount || ''}"></td>
-        <td><button type="button" class="row-del" onclick="this.closest('tr').remove(); updateTotal();">✕</button></td>
+        <td class="col-num"><input type="number" class="i-vat" value="${item.vat || ''}"></td>
+        <td class="col-num"><input type="number" class="i-total" value="${item.itemTotal || ''}"></td>
+        <td class="col-note"><input type="text" class="i-note" value="${escapeHtml(item.note || '')}"></td>
+        <td><button type="button" class="row-del" onclick="this.closest('tr').remove(); updateSummary();">✕</button></td>
       `;
       tbody.appendChild(tr);
-      tr.querySelectorAll('input').forEach(inp => inp.addEventListener('input', updateTotal));
+      tr.querySelectorAll('input').forEach(inp => inp.addEventListener('input', updateSummary));
     }
 
     function escapeHtml(str) {
@@ -305,26 +319,52 @@
       const rows = document.querySelectorAll('#itemsBody tr');
       const items = [];
       rows.forEach(row => {
-        const name = row.querySelector('.i-name').value.trim();
-        const qty = row.querySelector('.i-qty').value;
-        const unitPrice = row.querySelector('.i-price').value;
-        const amount = row.querySelector('.i-amount').value;
-        if (name || qty || unitPrice || amount) {
-          items.push({
-            name: name,
-            qty: qty ? Number(qty) : '',
-            unitPrice: unitPrice ? Number(unitPrice) : '',
-            amount: amount ? Number(amount) : 0
-          });
-        }
+        const get = cls => row.querySelector(cls).value;
+        const name = get('.i-name').trim();
+        const amount = get('.i-amount');
+        const unitPrice = get('.i-price');
+        if (!name && !amount && !unitPrice) return;
+        items.push({
+          no: get('.i-no'),
+          name: name,
+          spec: get('.i-spec'),
+          origin: get('.i-origin'),
+          unit: get('.i-unit'),
+          qty: get('.i-qty') ? Number(get('.i-qty')) : '',
+          unitPrice: unitPrice ? Number(unitPrice) : '',
+          amount: amount ? Number(amount) : 0,
+          vat: get('.i-vat') ? Number(get('.i-vat')) : 0,
+          itemTotal: get('.i-total') ? Number(get('.i-total')) : 0,
+          note: get('.i-note')
+        });
       });
       return items;
     }
 
-    function updateTotal() {
+    function updateSummary() {
       const items = collectItems();
-      const total = items.reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
-      document.getElementById('totalRow').textContent = '합계: ' + total.toLocaleString('ko-KR') + '원';
+      const itemAmountSum = items.reduce((s, i) => s + (Number(i.amount) || 0), 0);
+      const itemVatSum = items.reduce((s, i) => s + (Number(i.vat) || 0), 0);
+      const itemTotalSum = items.reduce((s, i) => s + (Number(i.itemTotal) || 0), 0);
+
+      const s = extractedSummary || {};
+      const extractedTotal = Number(s.totalAmount) || 0;
+      const mismatch = extractedTotal > 0 && Math.abs(extractedTotal - itemTotalSum) > 1;
+
+      const fmt = n => Number(n || 0).toLocaleString('ko-KR') + '원';
+
+      document.getElementById('summaryBox').innerHTML = `
+        <div class="row"><span>품목 공급가액 합</span><span>${fmt(itemAmountSum)}</span></div>
+        <div class="row"><span>품목 부가세 합</span><span>${fmt(itemVatSum)}</span></div>
+        <div class="row total"><span>품목 합계 합</span><span>${fmt(itemTotalSum)}</span></div>
+        <div class="row" style="margin-top:8px; color:#888;"><span>명세서 비과세금액</span><span>${fmt(s.taxFreeAmount)}</span></div>
+        <div class="row" style="color:#888;"><span>명세서 과세금액</span><span>${fmt(s.taxableAmount)}</span></div>
+        <div class="row" style="color:#888;"><span>명세서 부가세</span><span>${fmt(s.vatAmount)}</span></div>
+        <div class="row total ${mismatch ? 'mismatch' : ''}"><span>명세서 최종합계</span><span>${fmt(s.totalAmount)}${mismatch ? ' ⚠️ 불일치' : ''}</span></div>
+        <div class="row" style="margin-top:8px; color:#888;"><span>이전 미수금</span><span>${fmt(s.previousBalance)}</span></div>
+        <div class="row" style="color:#888;"><span>당일 입금액</span><span>${fmt(s.todayPayment)}</span></div>
+        <div class="row total"><span>현재 미수금</span><span>${fmt(s.currentBalance)}</span></div>
+      `;
     }
 
     async function saveInvoice() {
@@ -347,7 +387,8 @@
           mimeType: mimeType,
           date: date,
           vendor: selectedVendor,
-          items: items
+          items: items,
+          summary: extractedSummary
         });
 
         document.getElementById('saveBtn').disabled = false;
@@ -357,6 +398,9 @@
         document.getElementById('resultPath').textContent = res.folderPath + ' / ' + res.fileName;
         document.getElementById('resultLink').href = res.fileUrl;
         document.getElementById('sheetLink').href = res.sheetUrl;
+        if (res.currentBalance) {
+          document.getElementById('resultPath').innerHTML += `<br>현재 미수금: <b>${Number(res.currentBalance).toLocaleString('ko-KR')}원</b>`;
+        }
 
         if (res.priceChanges && res.priceChanges.length > 0) {
           const alertBox = document.getElementById('priceAlert');
@@ -374,6 +418,7 @@
     function resetAll() {
       base64Data = null;
       mimeType = null;
+      extractedSummary = {};
       document.getElementById('fileInput').value = '';
       document.getElementById('preview').style.display = 'none';
       document.getElementById('formCard').style.display = 'none';
