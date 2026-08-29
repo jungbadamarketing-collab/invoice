@@ -136,7 +136,7 @@
   <div class="sub">거래처 선택 → 촬영 → 확인 → 저장</div>
 
   <script>
-    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxIjOJplulHFkKrgdLp3a1KtF6nGZ391p7NwfpKAJx9FRtft0MyJwsFNMopCNbTB3lA/exec';
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyfEe5LHUXi12NR3ah_B3obvbXqHK45ESkq4E-sWX4A1lgTfRklBFSbp9fk0BprNlN3/exec';
     const VENDOR_PRESETS = ['성진에프에스', '미나퍼시픽', '대림수산', '남성주류', '동래상사'];
   </script>
 
@@ -517,6 +517,15 @@
         const name = row.querySelector('.i-name').value.trim();
         const label = `${idx + 1}번 품목${name ? ' (' + name + ')' : ''}`;
 
+        const isBlankRow = !name && !amount && !unitPrice;
+        if (isBlankRow) { row.classList.remove('row-mismatch'); return; } // 완전히 빈 줄은 검증 대상 아님
+
+        if (!name) {
+          row.classList.add('row-mismatch');
+          calcIssues.push(`${idx + 1}번 품목: 품목명이 비어있어요 — 확인 필요`);
+          return;
+        }
+
         if (!qty || !unitPrice) { row.classList.remove('row-mismatch'); return; }
 
         const expected = qty * unitPrice;
@@ -693,6 +702,13 @@
       try {
         const data = await callApi({ action: 'checkDuplicate', vendor: selectedVendor, date: date });
         renderDuplicateWarning(data.isDuplicate);
+
+        lastKnownBalanceInfo = data.lastKnownBalance || null;
+        const dataBasedSpan = document.getElementById('sumPrevBalanceDataBased');
+        dataBasedSpan.textContent = lastKnownBalanceInfo
+          ? `${Number(lastKnownBalanceInfo.balance).toLocaleString('ko-KR')}원 (${lastKnownBalanceInfo.date} 기준)`
+          : '기록 없음 (이 거래처 최초 등록)';
+        updateSummary(); // 날짜가 바뀌었으니 미수금 연속성 경고도 새 기준으로 다시 계산
       } catch (err) {
         // 재확인 실패해도 무시 — 최종 확인은 어차피 제출 시 서버가 다시 함
       }
