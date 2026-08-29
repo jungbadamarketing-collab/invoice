@@ -80,6 +80,11 @@
     margin-top: 10px; background: #fdecea; border: 1px solid #f1a9a0;
     border-radius: 10px; padding: 12px; font-size: 13px; font-weight: bold; color: #c0392b;
   }
+  .balance-warning {
+    display: none; margin-top: 12px; background: #fff4e5; border: 1px solid #f2c68a;
+    border-radius: 10px; padding: 12px; font-size: 13px; font-weight: bold; color: #a05a00;
+  }
+  .balance-warning .sub-line { font-weight: normal; margin-top: 4px; }
 
   button.action {
     width: 100%; padding: 14px; border: none; border-radius: 10px;
@@ -113,7 +118,7 @@
   <div class="sub">거래처 선택 → 촬영 → 확인 → 저장</div>
 
   <script>
-    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyafUPM29HU-sWTHPw5gagQwskfjL1iu-X9RmnicNf-jH9VNvbQldIU8mz7OVQ04qtv/exec';
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbybgg9akEKgKeMH-AmHzVybMnUUhoA12nB0WHvAoE_JZGR-dYjzKwi9TCAqGL9cNOdj/exec';
     const VENDOR_PRESETS = ['성진에프에스', '미나퍼시픽', '대림수산'];
   </script>
 
@@ -145,6 +150,8 @@
 
     <label>날짜</label>
     <input type="text" id="fDate" placeholder="2026-08-25" inputmode="numeric">
+
+    <div class="balance-warning" id="balanceWarning"></div>
 
     <label>품목 내역</label>
     <div class="items-scroll">
@@ -271,13 +278,14 @@
       document.getElementById('ocrStatus').innerHTML = '<span class="spinner"></span>인식 중... (10초 내외 소요)';
 
       try {
-        const data = await callApi({ action: 'ocr', base64Data: base64Data, mimeType: mimeType });
+        const data = await callApi({ action: 'ocr', base64Data: base64Data, mimeType: mimeType, vendor: selectedVendor });
 
         document.getElementById('ocrStatus').textContent = '';
         document.getElementById('fDate').value = data.date || '';
         extractedSummary = data.summary || {};
 
         renderItems(data.items && data.items.length > 0 ? data.items : [emptyItem()]);
+        renderBalanceContinuityWarning(data.balanceCheck);
 
         const dateLabel = data.date || '날짜 미인식';
         document.getElementById('confirmHeadline').textContent = `${dateLabel} · ${selectedVendor}`;
@@ -293,6 +301,29 @@
 
     function emptyItem() {
       return { no: '', name: '', spec: '', origin: '', unit: '', qty: '', unitPrice: '', amount: '', vat: '', itemTotal: '', note: '' };
+    }
+
+    function renderBalanceContinuityWarning(balanceCheck) {
+      const box = document.getElementById('balanceWarning');
+      if (!balanceCheck) {
+        box.style.display = 'none';
+        box.innerHTML = '';
+        return;
+      }
+      const fmt = n => Number(n || 0).toLocaleString('ko-KR') + '원';
+      const diffLabel = balanceCheck.diff > 0
+        ? `${fmt(balanceCheck.diff)} 더 많음`
+        : `${fmt(Math.abs(balanceCheck.diff))} 더 적음`;
+
+      box.innerHTML = `
+        ⚠️ 미수금 연속성 확인 필요
+        <div class="sub-line">
+          우리 기록상 마지막 미수금(${balanceCheck.lastKnownDate} 기준): ${fmt(balanceCheck.lastKnownBalance)}<br>
+          이 명세서의 전일미수금: ${fmt(balanceCheck.thisInvoicePreviousBalance)} (${diffLabel})<br>
+          중간에 명세서가 누락됐을 수 있어요. 제출은 가능하지만, 확인 후 누락분을 따로 찾아 올려주세요.
+        </div>
+      `;
+      box.style.display = 'block';
     }
 
     function renderItems(items) {
@@ -492,6 +523,12 @@
           alertBox.innerHTML = '📩 단가 변동 감지 → 문자 발송됨<br>' +
             res.priceChanges.map(c => `- ${c.name}: ${c.oldPrice.toLocaleString('ko-KR')}원 → ${c.newPrice.toLocaleString('ko-KR')}원`).join('<br>');
         }
+        if (res.balanceCheck) {
+          const alertBox = document.getElementById('priceAlert');
+          const extra = '📩 미수금 연속성 이상 감지 → 문자 발송됨';
+          alertBox.style.display = 'block';
+          alertBox.innerHTML = alertBox.innerHTML ? (alertBox.innerHTML + '<br><br>' + extra) : extra;
+        }
       } catch (err) {
         document.getElementById('saveBtn').disabled = false;
         document.getElementById('saveStatus').textContent = '';
@@ -510,6 +547,7 @@
       document.getElementById('resultCard').style.display = 'none';
       document.getElementById('priceAlert').style.display = 'none';
       document.getElementById('mismatchWarning').style.display = 'none';
+      document.getElementById('balanceWarning').style.display = 'none';
       resetVendor();
     }
 
