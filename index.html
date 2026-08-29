@@ -25,7 +25,7 @@
     box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   }
 
-  .vendor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .vendor-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
   .vendor-btn {
     padding: 20px 10px; background: #f0f4f1; border: 2px solid transparent;
     border-radius: 10px; font-size: 15px; font-weight: bold; color: #2c7a4b;
@@ -44,11 +44,11 @@
     display: block; width: 100%; padding: 16px; text-align: center;
     background: #2c7a4b; color: #fff; border-radius: 10px; font-size: 15px; cursor: pointer;
   }
-  #preview { width: 100%; border-radius: 8px; margin-top: 12px; display: none; }
-  .preview-wrap { position: relative; }
+  #preview { width: 100%; border-radius: 8px; display: none; }
+  .preview-wrap { position: relative; margin-top: 12px; }
   .ocr-overlay {
     display: none;
-    position: absolute; top: 12px; left: 0; right: 0; bottom: 0;
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0,0,0,0.6);
     color: #fff;
     align-items: center; justify-content: center;
@@ -133,16 +133,24 @@
 </head>
 <body>
   <h1>거래명세서 정리</h1>
-  <div class="sub">거래처 선택 → 촬영 → 확인 → 저장</div>
+  <div class="sub">선택 → 촬영 → 확인 → 저장</div>
 
   <script>
     const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzVFfeFxBkVkkM5osIvN-s3MMsKx3tG13LIXqS7UBMJZ1G3ezKPJsY6lWyj_2peMjFn/exec';
     const VENDOR_PRESETS = ['성진에프에스', '미나퍼시픽', '대림수산', '남성주류', '동래상사'];
+    const VENDOR_EMOJIS = {
+      '성진에프에스': '🌾',
+      '미나퍼시픽': '🐟',
+      '대림수산': '🐟',
+      '남성주류': '🍶',
+      '동래상사': '🍶'
+    };
+    // 이월잔액(외상 거래) 개념이 있는 거래처 — 명세서에 이전미수금이 안 찍혀 있으면(0으로 인식되면)
+    // 우리 기록(데이터기반)을 기본값으로 채워줌. 미나퍼시픽처럼 건별 결제하는 곳은 여기 넣지 않음.
+    const RUNNING_BALANCE_VENDORS = ['성진에프에스', '대림수산', '남성주류', '동래상사'];
   </script>
 
   <div class="card" id="vendorCard">
-    <label style="margin-top:0;">거래처를 선택하세요</label>
-    <div class="sub" style="margin-bottom:12px;">※ OCR 인식 중 오류가 뜨면 서버가 잠시 혼잡한 것뿐이니, 나중에 다시 시도해주세요.</div>
     <div class="vendor-grid" id="vendorGrid"></div>
     <div id="otherVendorBox" style="display:none; margin-top:12px;">
       <label>거래처명 직접 입력</label>
@@ -263,7 +271,7 @@
       VENDOR_PRESETS.forEach(v => {
         const btn = document.createElement('button');
         btn.className = 'vendor-btn';
-        btn.textContent = v;
+        btn.textContent = (VENDOR_EMOJIS[v] ? VENDOR_EMOJIS[v] + ' ' : '') + v;
         btn.onclick = () => selectVendor(v);
         grid.appendChild(btn);
       });
@@ -350,7 +358,12 @@
           extractedSummary = data.summary || {};
           lastKnownBalanceInfo = data.lastKnownBalance || null;
 
-          document.getElementById('fPrevBalance').value = extractedSummary.previousBalance || '';
+          // 명세서에 이전미수금이 안 찍혀 있고(0), 이월잔액 개념이 있는 거래처면 데이터기반 값을 기본값으로 채움
+          let prevBalanceDefault = extractedSummary.previousBalance || 0;
+          if (!prevBalanceDefault && lastKnownBalanceInfo && RUNNING_BALANCE_VENDORS.includes(selectedVendor)) {
+            prevBalanceDefault = lastKnownBalanceInfo.balance;
+          }
+          document.getElementById('fPrevBalance').value = prevBalanceDefault || '';
           document.getElementById('fTodayPayment').value = extractedSummary.todayPayment || '';
 
           const dataBasedSpan = document.getElementById('sumPrevBalanceDataBased');
