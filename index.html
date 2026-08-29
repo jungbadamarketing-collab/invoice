@@ -75,6 +75,7 @@
   .summary-box .row { display: flex; justify-content: space-between; padding: 2px 0; }
   .summary-box .row.total { font-weight: bold; border-top: 1px solid #ddd; margin-top: 6px; padding-top: 6px; }
   .summary-box .mismatch { color: #c0392b; }
+  .row-mismatch input { border-color: #c0392b !important; background: #fdecea; }
   .mismatch-warning {
     margin-top: 10px; background: #fdecea; border: 1px solid #f1a9a0;
     border-radius: 10px; padding: 12px; font-size: 13px; font-weight: bold; color: #c0392b;
@@ -170,10 +171,10 @@
 
     <div class="summary-box" id="summaryBox"></div>
     <div class="mismatch-warning" id="mismatchWarning" style="display:none;">
-      ⚠️ 품목 합계와 명세서 최종합계 금액이 서로 달라요. 표를 다시 확인해주세요.
+      <div id="warningText"></div>
       <label style="display:flex; align-items:center; gap:6px; margin-top:8px; font-weight:normal; font-size:13px;">
         <input type="checkbox" id="mismatchConfirm" onchange="updateSubmitState()">
-        금액 차이를 확인했고, 그래도 이대로 제출합니다
+        위 내용을 확인했고, 그래도 이대로 제출합니다
       </label>
     </div>
 
@@ -361,8 +362,30 @@
 
       const s = extractedSummary || {};
       const extractedTotal = Number(s.totalAmount) || 0;
-      const mismatch = extractedTotal > 0 && Math.abs(extractedTotal - itemTotalSum) > 1;
-      hasMismatch = mismatch;
+      const summaryMismatch = extractedTotal > 0 && Math.abs(extractedTotal - itemTotalSum) > 1;
+
+      // 품목별로 수량 × 단가 = 공급가액이 맞는지 검사
+      const calcIssues = [];
+      const rows = document.querySelectorAll('#itemsBody tr');
+      rows.forEach((row, idx) => {
+        const qty = Number(row.querySelector('.i-qty').value);
+        const unitPrice = Number(row.querySelector('.i-price').value);
+        const amount = Number(row.querySelector('.i-amount').value);
+        const name = row.querySelector('.i-name').value.trim();
+        if (!qty || !unitPrice) { row.classList.remove('row-mismatch'); return; }
+
+        const expected = qty * unitPrice;
+        const isOff = Math.abs(expected - amount) > Math.max(2, expected * 0.01); // 반올림 오차 약간 허용
+
+        if (isOff) {
+          row.classList.add('row-mismatch');
+          calcIssues.push(`${idx + 1}번 품목${name ? ' (' + name + ')' : ''}: 수량×단가=${expected.toLocaleString('ko-KR')}원인데 공급가액은 ${amount.toLocaleString('ko-KR')}원 — 확인 필요`);
+        } else {
+          row.classList.remove('row-mismatch');
+        }
+      });
+
+      hasMismatch = summaryMismatch || calcIssues.length > 0;
 
       const fmt = n => Number(n || 0).toLocaleString('ko-KR') + '원';
 
@@ -373,14 +396,19 @@
         <div class="row" style="margin-top:8px; color:#888;"><span>명세서 비과세금액</span><span>${fmt(s.taxFreeAmount)}</span></div>
         <div class="row" style="color:#888;"><span>명세서 과세금액</span><span>${fmt(s.taxableAmount)}</span></div>
         <div class="row" style="color:#888;"><span>명세서 부가세</span><span>${fmt(s.vatAmount)}</span></div>
-        <div class="row total ${mismatch ? 'mismatch' : ''}"><span>명세서 최종합계</span><span>${fmt(s.totalAmount)}${mismatch ? ' ⚠️ 불일치' : ''}</span></div>
+        <div class="row total ${summaryMismatch ? 'mismatch' : ''}"><span>명세서 최종합계</span><span>${fmt(s.totalAmount)}${summaryMismatch ? ' ⚠️ 불일치' : ''}</span></div>
         <div class="row" style="margin-top:8px; color:#888;"><span>이전 미수금</span><span>${fmt(s.previousBalance)}</span></div>
         <div class="row" style="color:#888;"><span>당일 입금액</span><span>${fmt(s.todayPayment)}</span></div>
         <div class="row total"><span>현재 미수금</span><span>${fmt(s.currentBalance)}</span></div>
       `;
 
       const warningBox = document.getElementById('mismatchWarning');
-      if (mismatch) {
+      const warningText = document.getElementById('warningText');
+      if (hasMismatch) {
+        const lines = [];
+        if (summaryMismatch) lines.push('⚠️ 품목 합계와 명세서 최종합계 금액이 서로 달라요.');
+        calcIssues.forEach(msg => lines.push('⚠️ ' + msg));
+        warningText.innerHTML = lines.join('<br>');
         warningBox.style.display = 'block';
       } else {
         warningBox.style.display = 'none';
@@ -408,7 +436,7 @@
         return;
       }
       if (hasMismatch && !document.getElementById('mismatchConfirm').checked) {
-        document.getElementById('errorMsg').textContent = '금액 불일치를 먼저 확인해주세요.';
+        document.getElementById('errorMsg').textContent = '금액 불일치/계산오류를 먼저 확인해주세요.';
         return;
       }
 
