@@ -119,6 +119,7 @@
 
   <div class="card" id="vendorCard">
     <label style="margin-top:0;">거래처를 선택하세요</label>
+    <div class="sub" style="margin-bottom:12px;">※ OCR 인식 중 오류가 뜨면 서버가 잠시 혼잡한 것뿐이니, 나중에 다시 시도해주세요.</div>
     <div class="vendor-grid" id="vendorGrid"></div>
     <div id="otherVendorBox" style="display:none; margin-top:12px;">
       <label>거래처명 직접 입력</label>
@@ -363,22 +364,45 @@
       const extractedTotal = Number(s.totalAmount) || 0;
       const summaryMismatch = extractedTotal > 0 && Math.abs(extractedTotal - itemTotalSum) > 1;
 
-      // 품목별로 수량 × 단가 = 공급가액이 맞는지 검사
+      // 품목별 계산 검증
+      // - 부가세가 있는 품목(공산품 등): 단가에 부가세가 포함된 것으로 보고 수량×단가=합계 를 확인
+      // - 부가세가 없는 품목(면세 농산물 등): 수량×단가=공급가액 을 확인
+      // - 부가세가 있는 경우, 공급가액+부가세=합계 인지도 함께 검산
       const calcIssues = [];
       const rows = document.querySelectorAll('#itemsBody tr');
       rows.forEach((row, idx) => {
         const qty = Number(row.querySelector('.i-qty').value);
         const unitPrice = Number(row.querySelector('.i-price').value);
         const amount = Number(row.querySelector('.i-amount').value);
+        const vat = Number(row.querySelector('.i-vat').value) || 0;
+        const itemTotal = Number(row.querySelector('.i-total').value) || 0;
         const name = row.querySelector('.i-name').value.trim();
+        const label = `${idx + 1}번 품목${name ? ' (' + name + ')' : ''}`;
+
         if (!qty || !unitPrice) { row.classList.remove('row-mismatch'); return; }
 
         const expected = qty * unitPrice;
-        const isOff = Math.abs(expected - amount) > 1; // 소수점 수량 반올림 오차(±1원)만 허용
+        let isOff = false;
+        let msg = '';
+
+        if (vat > 0) {
+          if (Math.abs(expected - itemTotal) > 1) {
+            isOff = true;
+            msg = `${label}: 수량×단가=${expected.toLocaleString('ko-KR')}원인데 합계는 ${itemTotal.toLocaleString('ko-KR')}원 — 확인 필요 (부가세 포함 단가 기준)`;
+          } else if (Math.abs((amount + vat) - itemTotal) > 1) {
+            isOff = true;
+            msg = `${label}: 공급가액+부가세(${(amount + vat).toLocaleString('ko-KR')}원)가 합계(${itemTotal.toLocaleString('ko-KR')}원)와 달라요 — 확인 필요`;
+          }
+        } else {
+          if (Math.abs(expected - amount) > 1) {
+            isOff = true;
+            msg = `${label}: 수량×단가=${expected.toLocaleString('ko-KR')}원인데 공급가액은 ${amount.toLocaleString('ko-KR')}원 — 확인 필요`;
+          }
+        }
 
         if (isOff) {
           row.classList.add('row-mismatch');
-          calcIssues.push(`${idx + 1}번 품목${name ? ' (' + name + ')' : ''}: 수량×단가=${expected.toLocaleString('ko-KR')}원인데 공급가액은 ${amount.toLocaleString('ko-KR')}원 — 확인 필요`);
+          calcIssues.push(msg);
         } else {
           row.classList.remove('row-mismatch');
         }
