@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>거래명세서 정리</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Malgun Gothic', sans-serif;
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 16px;
+    background: #f7f7f8;
+    color: #222;
+  }
+  h1 { font-size: 18px; margin-bottom: 4px; }
+  .sub { color: #888; font-size: 13px; margin-bottom: 20px; }
+
+  .card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  input[type="file"] { display: none; }
+  .upload-btn {
+    display: block;
+    width: 100%;
+    padding: 16px;
+    text-align: center;
+    background: #2c7a4b;
+    color: #fff;
+    border-radius: 10px;
+    font-size: 15px;
+    cursor: pointer;
+  }
+
+  #preview {
+    width: 100%;
+    border-radius: 8px;
+    margin-top: 12px;
+    display: none;
+  }
+
+  .confirm-title {
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 4px;
+  }
+  .confirm-sub {
+    font-size: 13px;
+    color: #888;
+    margin-bottom: 16px;
+  }
+
+  label {
+    display: block;
+    font-size: 13px;
+    color: #555;
+    margin: 12px 0 4px;
+  }
+  input[type="text"], input[type="date"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 15px;
+  }
+
+  button.action {
+    width: 100%;
+    padding: 14px;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    margin-top: 16px;
+    cursor: pointer;
+  }
+  #ocrBtn { background: #333; color: #fff; }
+  #saveBtn { background: #2c7a4b; color: #fff; }
+  button:disabled { opacity: 0.5; }
+
+  .status { font-size: 13px; color: #888; margin-top: 8px; text-align: center; }
+  .result {
+    display: none;
+    background: #eaf7ee;
+    border: 1px solid #b7e2c4;
+    border-radius: 10px;
+    padding: 14px;
+    margin-top: 16px;
+    font-size: 14px;
+  }
+  .result a { color: #2c7a4b; font-weight: bold; }
+  .error { color: #c0392b; font-size: 13px; margin-top: 8px; }
+
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid #ccc;
+    border-top-color: #333;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+  <h1>거래명세서 정리</h1>
+  <div class="sub">촬영 → 자동 인식 → 확인 → 저장</div>
+
+  <!-- 설정: Apps Script 배포 URL을 여기에 붙여넣으세요 -->
+  <script>
+    const APPS_SCRIPT_URL = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE';
+  </script>
+
+  <div class="card" id="uploadCard">
+    <label class="upload-btn" for="fileInput">📷 거래명세서 촬영 / 선택</label>
+    <input type="file" id="fileInput" accept="image/*" capture="environment">
+    <img id="preview">
+    <div class="status" id="ocrStatus"></div>
+  </div>
+
+  <div class="card" id="formCard" style="display:none;">
+    <div class="confirm-title" id="confirmHeadline"></div>
+    <div class="confirm-sub">인식 결과가 맞는지 확인해주세요. 틀리면 아래에서 직접 수정해주세요.</div>
+
+    <label>날짜</label>
+    <input type="date" id="fDate">
+    <label>업체명</label>
+    <input type="text" id="fVendor" placeholder="예: OO수산">
+    <label>금액 (원)</label>
+    <input type="text" id="fAmount" placeholder="예: 350000">
+
+    <button class="action" id="saveBtn" onclick="saveInvoice()">제출하기</button>
+    <div class="status" id="saveStatus"></div>
+    <div class="error" id="errorMsg"></div>
+  </div>
+
+  <div class="result" id="resultCard">
+    ✅ 저장 완료<br>
+    <span id="resultPath"></span><br>
+    <a id="resultLink" href="#" target="_blank">드라이브에서 열기</a>
+    <button class="action" id="resetBtn" onclick="resetForm()" style="background:#666; color:#fff;">다음 명세서 올리기</button>
+  </div>
+
+  <script>
+    let base64Data = null;
+    let mimeType = null;
+
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      mimeType = file.type;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        const result = evt.target.result;
+        base64Data = result.split(',')[1];
+        document.getElementById('preview').src = result;
+        document.getElementById('preview').style.display = 'block';
+        document.getElementById('formCard').style.display = 'none';
+        document.getElementById('resultCard').style.display = 'none';
+        runOcr();
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Apps Script는 CORS preflight(OPTIONS)를 처리하지 않으므로
+    // text/plain으로 보내 단순 요청(preflight 없음)으로 처리한다.
+    async function callApi(payload) {
+      const res = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error || '알 수 없는 오류');
+      return json.data;
+    }
+
+    async function runOcr() {
+      document.getElementById('ocrStatus').innerHTML = '<span class="spinner"></span>인식 중... (수 초 소요)';
+
+      try {
+        const data = await callApi({
+          action: 'ocr',
+          base64Data: base64Data,
+          mimeType: mimeType,
+          filename: 'upload.jpg'
+        });
+
+        document.getElementById('ocrStatus').textContent = '';
+        document.getElementById('fDate').value = data.date || '';
+        document.getElementById('fVendor').value = data.vendor || '';
+        document.getElementById('fAmount').value = data.amount || '';
+
+        const dateLabel = data.date || '날짜 미인식';
+        const vendorLabel = data.vendor || '업체명 미인식';
+        document.getElementById('confirmHeadline').textContent =
+          `${dateLabel} · ${vendorLabel} 맞습니까?`;
+
+        document.getElementById('formCard').style.display = 'block';
+      } catch (err) {
+        document.getElementById('ocrStatus').textContent = '';
+        document.getElementById('errorMsg').textContent = 'OCR 오류: ' + err.message;
+        document.getElementById('formCard').style.display = 'block';
+      }
+    }
+
+    async function saveInvoice() {
+      const date = document.getElementById('fDate').value;
+      const vendor = document.getElementById('fVendor').value.trim();
+      const amount = document.getElementById('fAmount').value.replace(/[^0-9]/g, '');
+      document.getElementById('errorMsg').textContent = '';
+
+      if (!date || !vendor || !amount) {
+        document.getElementById('errorMsg').textContent = '날짜/업체명/금액을 모두 입력해주세요.';
+        return;
+      }
+
+      document.getElementById('saveBtn').disabled = true;
+      document.getElementById('saveStatus').innerHTML = '<span class="spinner"></span>저장 중...';
+
+      try {
+        const res = await callApi({
+          action: 'save',
+          base64Data: base64Data,
+          mimeType: mimeType,
+          date: date,
+          vendor: vendor,
+          amount: amount
+        });
+
+        document.getElementById('saveBtn').disabled = false;
+        document.getElementById('saveStatus').textContent = '';
+        document.getElementById('formCard').style.display = 'none';
+        document.getElementById('resultCard').style.display = 'block';
+        document.getElementById('resultPath').textContent = res.folderPath + ' / ' + res.fileName;
+        document.getElementById('resultLink').href = res.fileUrl;
+      } catch (err) {
+        document.getElementById('saveBtn').disabled = false;
+        document.getElementById('saveStatus').textContent = '';
+        document.getElementById('errorMsg').textContent = '저장 오류: ' + err.message;
+      }
+    }
+
+    function resetForm() {
+      base64Data = null;
+      mimeType = null;
+      document.getElementById('fileInput').value = '';
+      document.getElementById('preview').style.display = 'none';
+      document.getElementById('formCard').style.display = 'none';
+      document.getElementById('resultCard').style.display = 'none';
+    }
+  </script>
+</body>
+</html>
