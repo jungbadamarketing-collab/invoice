@@ -128,7 +128,7 @@
       <button onclick="resetVendor()">변경</button>
     </div>
     <label class="upload-btn" for="fileInput">📷 거래명세서 촬영 / 선택</label>
-    <input type="file" id="fileInput" accept="image/*" capture="environment">
+    <input type="file" id="fileInput" accept="image/*">
     <img id="preview">
     <div class="status" id="ocrStatus"></div>
   </div>
@@ -138,7 +138,7 @@
     <div class="confirm-sub">인식 결과가 맞는지 확인해주세요. 옆으로 스크롤하면 나머지 항목도 보여요.</div>
 
     <label>날짜</label>
-    <input type="date" id="fDate">
+    <input type="text" id="fDate" placeholder="2026-08-25" inputmode="numeric">
 
     <label>품목 내역</label>
     <div class="items-scroll">
@@ -374,6 +374,10 @@
 
       if (!date) {
         document.getElementById('errorMsg').textContent = '날짜를 입력해주세요.';
+        return;
+      }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        document.getElementById('errorMsg').textContent = '날짜 형식이 올바르지 않아요. 2026-08-25 처럼 입력해주세요.';
         return;
       }
 
